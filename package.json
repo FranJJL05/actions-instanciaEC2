@@ -1,0 +1,21 @@
+{
+  "name": "actions-buckets3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/pruebas.test.js",
+    "docs": "jsdoc src/js/index.js -d docs",
+    "start": "echo \"La app es estática, abre src/index.html\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jsdoc": "^4.0.5"
+  },
+  "devDependencies": {
+    "chai": "^6.2.0",
+    "mocha": "^11.7.4"
+  }
+}

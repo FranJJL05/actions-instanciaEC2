@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Despliegue CI/CD - Lista de Tareas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="js/index.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Lista de Tareas (To-Do)</h1>
+        <p>Aplicación de demostración para el despliegue CI/CD en AWS S3.</p>
+
+        <div id="tarea-form">
+            <input type="text" id="nueva-tarea" placeholder="Escribe una nueva tarea...">
+            <button onclick="agregarTareaGUI()">Agregar</button>
+        </div>
+
+        <h2>Tareas Pendientes</h2>
+        <ul id="lista-tareas">
+            <li>*Carga tu script para ver las tareas!*</li>
+        </ul>
+    </div>
+
+    <script>
+        // Lógica de conexión con el HTML (esto NO se prueba con Jest, solo la clase GestorTareas)
+        const gestor = new GestorTareas();
+
+        function renderizarTareas() {
+            const ul = document.getElementById('lista-tareas');
+            ul.innerHTML = ''; // Limpiar lista
+
+            gestor.obtenerTareas().forEach(tarea => {
+                const li = document.createElement('li');
+                li.className = tarea.completada ? 'completada' : '';
+                li.textContent = tarea.descripcion;
+                li.onclick = () => {
+                    gestor.marcarCompletada(tarea.id);
+                    renderizarTareas(); // Volver a renderizar
+                };
+                ul.appendChild(li);
+            });
+        }
+
+        function agregarTareaGUI() {
+            const input = document.getElementById('nueva-tarea');
+            try {
+                gestor.agregarTarea(input.value);
+                input.value = ''; // Limpiar input
+                renderizarTareas();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // Cargar algunas tareas iniciales
+        gestor.agregarTarea("Configurar GitHub Secrets");
+        gestor.agregarTarea("Crear el bucket S3");
+        renderizarTareas();
+    </script>
+</body>
+
+</html>
