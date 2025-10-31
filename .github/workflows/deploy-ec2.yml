@@ -39,28 +39,32 @@ jobs:
       # --- DESPLIEGUE CONTINUO (CD) ---
       
       # 7. Despliegue vía SSH/SCP (Copia de archivos a EC2)
-      - name: 7. Crear Directorio Remoto con Sudo (si no existe)
+      - name: 7. Iniciar SSH Agent y Cargar Clave
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          # Carga el secret KEY directamente al agente SSH del runner.
+          # Esto resuelve el error 'can't connect without a private SSH key or password'.
+          ssh-private-key: ${{ secrets.KEY }}
+
+      - name: 8. Crear Directorio Remoto con Sudo (via SSH)
         uses: appleboy/ssh-action@master
         with:
-          # ¡CORRECCIÓN! Usamos el valor directo para garantizar que no falle.
-          host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
+          host: 'ec2-98-89-41-135.compute-1.amazonaws.com'
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
+          # Ya NO necesitamos pasar la clave SSH a esta acción, ¡el agente la tiene!
           script: |
             sudo mkdir -p /var/www/html/app-deploy
-            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
+            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy 
 
-      - name: 8. Subir archivos a EC2 (SCP)
+      - name: 9. Subir archivos a EC2 (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST }}
+          host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
+          # Ya NO necesitamos pasar la clave SSH a esta acción, ¡el agente la tiene!
           source: "." 
           target: "/var/www/html/app-deploy"
-
-
-      # 9. Comprobación final (Verifica el código 200 OK)
-      - name: 9. Verificar que la aplicación está visible
+          
+      - name: 10. Verificar que la aplicación está visible
         run: |
-          curl -sI http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
+          curl -sI http://ec2-98-89-41-135.compute-1.amazonaws.com/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
