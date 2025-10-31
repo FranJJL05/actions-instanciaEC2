@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test/pruebas.test.js",
+    "test": "npx mocha test/pruebas.test.js",
     "docs": "jsdoc src/js/index.js -d docs",
     "start": "echo \"La app es estática, abre src/index.html\""
   },

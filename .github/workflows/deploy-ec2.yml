@@ -31,7 +31,7 @@ jobs:
           chmod +x ./node_modules/.bin/jsdoc
 
       - name: 5. Ejecutar las pruebas con Mocha
-        run: npx mocha --loader=esm test/pruebas.test.js --require esm
+        run: npx mocha test/pruebas.test.js
       
       - name: 6. Generar la documentacion (JSDoc)
         run: npx jsdoc src/js/index.js -d docs 
