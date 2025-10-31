@@ -15,9 +15,9 @@ jobs:
         uses: actions/checkout@v4
       
       - name: 2. Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+          node-version: '14.x'
 
       - name: 3. Instalar dependencias (Mocha y JSDoc)
         run: npm install 
