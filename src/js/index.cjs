@@ -4,7 +4,7 @@
  * Clase simple para gestionar una lista de tareas (To-Do List).
  * @class
  */
-class GestorTareas {
+export class GestorTareas {
     constructor() {
         this.tareas = [];
     }
@@ -49,6 +49,3 @@ class GestorTareas {
         return this.tareas;
     }
 }
-
-// Exportamos la clase para que Jest pueda probarla.
-module.exports = { GestorTareas };
