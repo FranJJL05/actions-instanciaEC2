@@ -39,29 +39,39 @@ jobs:
       # --- DESPLIEGUE CONTINUO (CD) ---
       
       # 7. Crear Directorio Remoto con Sudo (via SSH)
-      - name: 7. Crear Directorio Remoto con Sudo
+      - name: 7. Cargar Clave SSH en Agente
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          # Asegúrate de que el nombre del secreto sea correcto (KEY en este ejemplo)
+          ssh-private-key: ${{ secrets.KEY }} 
+
+      # 8. Crear Directorio Remoto y Ajustar Permisos (via SSH)
+      - name: 8. Crear Directorio Remoto y Ajustar Permisos
         uses: appleboy/ssh-action@master
         with:
-          # Usamos el valor directo para garantizar que no falle.
           host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }} # <--- Volvemos a usar el KEY directamente (con la esperanza de que ahora funcione)
-          # NOTA: Si el error persiste aquí, el problema es que la KEY está vacía en GitHub.
+          # ¡IMPORTANTE! NO se incluye el parámetro 'key' aquí.
+          # La clave la proporciona el agente SSH cargado en el Paso 7.
           script: |
+            # 1. Crear el directorio si no existe (-p)
             sudo mkdir -p /var/www/html/app-deploy
+            # 2. Darle propiedad del directorio al usuario que ejecuta el deploy (para que SCP pueda escribir)
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy 
 
-      # 8. Subir archivos a EC2 (SCP)
-      - name: 8. Subir archivos a EC2 (SCP)
+      # 9. Subir archivos a EC2 (SCP)
+      - name: 9. Subir archivos a EC2 (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }} # <--- Volvemos a usar el KEY directamente
+          # ¡IMPORTANTE! NO se incluye el parámetro 'key' aquí.
+          # La clave la proporciona el agente SSH cargado en el Paso 7.
           source: "." 
           target: "/var/www/html/app-deploy"
+          overwrite: true # Asegura que los archivos se reemplacen
 
-      # 9. Comprobación final
-      - name: 9. Verificar que la aplicación está visible
+      # 10. Comprobación final
+      - name: 10. Verificar que la aplicación está visible
         run: |
           curl -sI http://ec2-98-89-41-135.compute-1.amazonaws.com/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
