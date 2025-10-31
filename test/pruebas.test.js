@@ -1,10 +1,10 @@
 // test/pruebas.test.js - Adaptado a Mocha y Chai
 
-import * as chai from 'chai';
-const expect = chai.expect; // Usamos la aserción 'expect' de Chai
+const chai = require('chai');
+const expect = chai.expect;
 
 // Importa la clase del archivo de código fuente
-import { GestorTareas } from '../src/js/index.js';
+const { GestorTareas } = require('../src/js/index.js');
 
 // 'describe' y 'beforeEach' funcionan igual que en Jest (son nativos de Mocha)
 describe('Pruebas para la clase GestorTareas', () => {
