@@ -51,4 +51,4 @@ class GestorTareas {
 }
 
 
-module.exports = { GestorTareas };
+export { GestorTareas };

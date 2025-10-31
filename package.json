@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "npx mocha --require esm test/pruebas.test.cjs",
+    "test": "npx mocha test/pruebas.test.js",
     "docs": "jsdoc src/js/index.js -d docs",
     "start": "echo \"La app es estática, abre src/index.html\""
   },
@@ -16,7 +17,6 @@
   },
   "devDependencies": {
     "chai": "^6.2.0",
-    "mocha": "^11.7.4",
-    "esm": "^3.2.25"
+    "mocha": "^11.7.4"
   }
 }

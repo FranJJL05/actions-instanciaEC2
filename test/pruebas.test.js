@@ -1,11 +1,11 @@
-// test/pruebas.test.js (CommonJS)
+// test/pruebas.test.js (ESM)
 
-// Importaciones CommonJS
-const chai = require('chai');
-const expect = chai.expect;
+// Importaciones ESM
+import { expect } from 'chai'; 
 
-// Importar la clase usando require()
-const { GestorTareas } = require('../src/js/index.js');
+// Importar la clase usando import. 
+// Nota: Cuando importas un archivo local en ESM, debes incluir la extensión (.js).
+import { GestorTareas } from '../src/js/index.js'; 
 
 describe('Pruebas para la clase GestorTareas', () => {
     let gestor;
