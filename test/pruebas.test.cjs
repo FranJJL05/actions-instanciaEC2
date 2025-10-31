@@ -4,7 +4,7 @@ const chai = require('chai');
 const expect = chai.expect;
 
 // Importa la clase del archivo de código fuente
-const { GestorTareas } = require('../src/js/index.js');
+const { GestorTareas } = require('../src/js/index.cjs');
 
 // 'describe' y 'beforeEach' funcionan igual que en Jest (son nativos de Mocha)
 describe('Pruebas para la clase GestorTareas', () => {
