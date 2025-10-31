@@ -4,7 +4,7 @@
  * Clase simple para gestionar una lista de tareas (To-Do List).
  * @class
  */
-export default class GestorTareas {
+class GestorTareas {
     constructor() {
         this.tareas = [];
     }
@@ -49,3 +49,6 @@ export default class GestorTareas {
         return this.tareas;
     }
 }
+
+
+module.exports = { GestorTareas };
