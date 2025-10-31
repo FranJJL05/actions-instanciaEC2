@@ -38,33 +38,30 @@ jobs:
 
       # --- DESPLIEGUE CONTINUO (CD) ---
       
-      # 7. Despliegue vía SSH/SCP (Copia de archivos a EC2)
-      - name: 7. Iniciar SSH Agent y Cargar Clave
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          # Carga el secret KEY directamente al agente SSH del runner.
-          # Esto resuelve el error 'can't connect without a private SSH key or password'.
-          ssh-private-key: ${{ secrets.KEY }}
-
-      - name: 8. Crear Directorio Remoto con Sudo (via SSH)
+      # 7. Crear Directorio Remoto con Sudo (via SSH)
+      - name: 7. Crear Directorio Remoto con Sudo
         uses: appleboy/ssh-action@master
         with:
-          host: 'ec2-98-89-41-135.compute-1.amazonaws.com'
+          # Usamos el valor directo para garantizar que no falle.
+          host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
           username: ${{ secrets.USERNAME }}
-          # Ya NO necesitamos pasar la clave SSH a esta acción, ¡el agente la tiene!
+          key: ${{ secrets.KEY }} # <--- Volvemos a usar el KEY directamente (con la esperanza de que ahora funcione)
+          # NOTA: Si el error persiste aquí, el problema es que la KEY está vacía en GitHub.
           script: |
             sudo mkdir -p /var/www/html/app-deploy
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy 
 
-      - name: 9. Subir archivos a EC2 (SCP)
+      # 8. Subir archivos a EC2 (SCP)
+      - name: 8. Subir archivos a EC2 (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
           username: ${{ secrets.USERNAME }}
-          # Ya NO necesitamos pasar la clave SSH a esta acción, ¡el agente la tiene!
+          key: ${{ secrets.KEY }} # <--- Volvemos a usar el KEY directamente
           source: "." 
           target: "/var/www/html/app-deploy"
-          
-      - name: 10. Verificar que la aplicación está visible
+
+      # 9. Comprobación final
+      - name: 9. Verificar que la aplicación está visible
         run: |
           curl -sI http://ec2-98-89-41-135.compute-1.amazonaws.com/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
