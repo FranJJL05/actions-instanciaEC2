@@ -1,6 +1,6 @@
 // test/pruebas.test.js - Adaptado a Mocha y Chai
 
-import chai from 'chai';
+import * as chai from 'chai';
 const expect = chai.expect; // Usamos la aserción 'expect' de Chai
 
 // Importa la clase del archivo de código fuente
