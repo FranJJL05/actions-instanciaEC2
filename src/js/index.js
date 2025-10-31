@@ -4,7 +4,7 @@
  * Clase simple para gestionar una lista de tareas (To-Do List).
  * @class
  */
-class GestorTareas {
+export class GestorTareas {
     constructor() {
         this.tareas = [];
     }
