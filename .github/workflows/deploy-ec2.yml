@@ -42,13 +42,13 @@ jobs:
       - name: 7. Crear Directorio Remoto con Sudo (si no existe)
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
+          # ¡CORRECCIÓN! Usamos el valor directo para garantizar que no falle.
+          host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          # Comando que crea el directorio con sudo (si no existe)
           script: |
             sudo mkdir -p /var/www/html/app-deploy
-            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy 
+            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
 
       - name: 8. Subir archivos a EC2 (SCP)
         uses: appleboy/scp-action@v0.1.7
