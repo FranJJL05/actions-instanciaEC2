@@ -76,6 +76,7 @@ jobs:
           # El comando 'ls' fallará si index.html no existe
           script: |
             echo "Verificando que index.html se copió correctamente..."
+            # ATENCIÓN: Se busca el archivo en la subcarpeta 'src/' dentro de app-deploy
             ls -al /var/www/html/app-deploy/src/index.html
 
       - name: 9. Instalar y Preparar Nginx en EC2 (SSH)
@@ -101,9 +102,10 @@ jobs:
             NGINX_CONF="server {
                 listen 80;
                 server_name _; 
-                # CRÍTICO: La app está en /var/www/html/app-deploy/src/, así que la ruta base es esa.
+                # CRÍTICO: La ubicación de la URL debe ser /app-deploy/ para acceder al contenido.
                 location /app-deploy/ {
-                    # ATENCIÓN: Alias debe ser la ruta COMPLETA de la carpeta
+                    # ATENCIÓN: El alias debe apuntar a la ruta ABSOLUTA donde Nginx encuentra el index.html
+                    # El archivo está en /var/www/html/app-deploy/src/index.html
                     alias /var/www/html/app-deploy/src/; 
                     index index.html;
                     # try_files más simple que debería funcionar con la directiva 'alias' ajustada.
@@ -136,5 +138,5 @@ jobs:
       - name: 13. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
-          # Usa curl para comprobar la URL, el '-f' asegura que solo pasa con HTTP 200
+          # CRÍTICO: La URL debe coincidir exactamente con la location de Nginx, que es /app-deploy/
           curl -f -s -S http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
