@@ -36,16 +36,29 @@ jobs:
       - name: 6. Generar la documentacion (JSDoc)
         run: npx jsdoc src/js/index.js -d docs 
 
-       # --- DESPLIEGUE CONTINUO (CD) MODO BÁSICO ---
+      # --- PASO CRÍTICO: PREPARACIÓN PARA DESPLIEGUE (BUILD STEP) ---
+      # ESTE PASO MUEVE index.html y sus carpetas (css/ y js/) a la raíz del repositorio
+      # Esto elimina la carpeta 'src/' de la ruta final del servidor, SOLUCIONANDO el 404.
+      - name: 6.5. Preparar Archivos de Despliegue (Mover contenido de 'src' a la raíz)
+        run: |
+          # Copia el contenido de 'src' (index.html, css/, js/) a la raíz del repositorio.
+          cp -r src/* .
+          # Eliminar carpetas grandes para no subirlas al servidor y ahorrar tiempo.
+          rm -rf src
+          rm -rf node_modules 
+      # --- FIN PASO CRÍTICO ---
 
-      - name: 7. Instalar y Crear Directorio Remoto y Ajustar Permisos (SSH)
+
+      # --- DESPLIEGUE CONTINUO (CD) ---
+      
+      - name: 7. Instalar Nginx, Crear Directorio Remoto y Ajustar Permisos (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }} 
           script: |
-            # Instalación de Nginx (Añadido)
+            # Instalación de Nginx
             sudo apt update
             sudo apt install nginx -y
             sudo mkdir -p /etc/nginx/sites-available
@@ -63,7 +76,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          # Copia el contenido del repositorio incluyendo la carpeta 'src/'
+          # Copia el contenido de la raíz, donde ahora están los archivos planos (index.html).
           source: "./*" 
           target: "/var/www/html/app-deploy"
           overwrite: true 
@@ -76,13 +89,13 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            # Definición de la configuración de Nginx. (Versión básica apuntando a src/)
+            # Definición de la configuración de Nginx.
             NGINX_CONF="server {
                 listen 80;
                 server_name _; 
                 location /app-deploy/ {
-                    # ATENCIÓN: Vuelve a apuntar a 'src/' ya que no se hizo el paso de build
-                    alias /var/www/html/app-deploy/src/; 
+                    # SOLUCIÓN: El alias apunta a la raíz del despliegue, ¡sin 'src/'!
+                    alias /var/www/html/app-deploy/; 
                     index index.html;
                     try_files \$uri \$uri/ =404;
                 }
@@ -109,9 +122,8 @@ jobs:
       - name: 11. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
-          # La URL sigue siendo la misma.
+          # Si Nginx devuelve 200 OK, la prueba es exitosa.
           curl -f -s -S http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
-
 
 
       

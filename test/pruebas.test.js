@@ -5,7 +5,7 @@ import { expect } from 'chai';
 
 // Importar la clase usando import. 
 // Nota: Cuando importas un archivo local en ESM, debes incluir la extensión (.js).
-import { GestorTareas } from '../src/js/index.js';
+import { GestorTareas } from '../js/index.js';
 
 describe('Pruebas para la clase GestorTareas', () => {
     let gestor;
