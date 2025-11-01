@@ -36,11 +36,23 @@ jobs:
       - name: 6. Generar la documentacion (JSDoc)
         run: npx jsdoc src/js/index.js -d docs 
 
+      # --- PASO CRÍTICO: PREPARACIÓN PARA DESPLIEGUE (BUILD) ---
+      - name: 6.5. Preparar Archivos de Despliegue (Eliminar 'src/' del path)
+        run: |
+          # 1. Copiar el contenido de 'src' a la raíz del repositorio (que es el directorio de trabajo).
+          #    Esto permite que Nginx acceda a index.html directamente.
+          cp -r src/* .
+          # 2. Eliminar la carpeta 'src' para que no se suba como subdirectorio.
+          rm -rf src
+          # 3. Eliminar la carpeta 'node_modules' para reducir el tamaño de la transferencia SCP.
+          rm -rf node_modules 
+      # --- FIN PASO CRÍTICO ---
+
+
       # --- DESPLIEGUE CONTINUO (CD) ---
       
       # 7. Crear Directorio Remoto con Sudo (via SSH)
       - name: 7. Crear Directorio Remoto y Ajustar Permisos (SSH)
-        # Usamos @master para asegurarnos de que esta acción siempre se resuelva.
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -53,7 +65,6 @@ jobs:
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
             # 3. CRÍTICO: Asegurar permisos de LECTURA (755) para el grupo www-data (Nginx)
             sudo chmod -R 755 /var/www/html/app-deploy
-            # CRÍTICO: El chmod 755 garantiza que el usuario que ejecuta Nginx (www-data) pueda leer los archivos.
 
       - name: 8. Subir Archivos a EC2 (SCP)
         uses: appleboy/scp-action@master
@@ -61,23 +72,13 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          
-          source: "." 
+          # CRÍTICO: Ahora copiamos el contenido de la raíz (donde están index.html, css/, js/).
+          source: "./*" 
           target: "/var/www/html/app-deploy"
           overwrite: true 
           command_timeout: 10m
 
-      - name: 8.5. DEBUG: Verificar Existencia de index.html Remoto
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          # El comando 'ls' fallará si index.html no existe
-          script: |
-            echo "Verificando que index.html se copió correctamente..."
-            # ATENCIÓN: Se busca el archivo en la subcarpeta 'src/' dentro de app-deploy
-            ls -al /var/www/html/app-deploy/src/index.html
+      # 8.5. DEBUG: ELIMINADO ya que no hace falta, ahora index.html está en la raíz.
 
       - name: 9. Instalar y Preparar Nginx en EC2 (SSH)
         uses: appleboy/ssh-action@master
@@ -98,17 +99,16 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            # Definición de la configuración de Nginx. Usamos ALIAS para mapear el subdirectorio de la URL.
+            # Definición de la configuración de Nginx.
             NGINX_CONF="server {
                 listen 80;
                 server_name _; 
-                # CRÍTICO: La ubicación de la URL debe ser /app-deploy/ para acceder al contenido.
+                # CRÍTICO: La ubicación ahora mapea directamente al contenido copiado.
                 location /app-deploy/ {
-                    # ATENCIÓN: El alias debe apuntar a la ruta ABSOLUTA donde Nginx encuentra el index.html
-                    # El archivo está en /var/www/html/app-deploy/src/index.html
-                    alias /var/www/html/app-deploy/src/; 
+                    # ATENCIÓN: El alias apunta a la raíz del despliegue, donde ahora está index.html
+                    alias /var/www/html/app-deploy/; 
                     index index.html;
-                    # try_files más simple que debería funcionar con la directiva 'alias' ajustada.
+                    # Configuración más limpia para archivos estáticos
                     try_files \$uri \$uri/ =404;
                 }
             }"
@@ -138,5 +138,5 @@ jobs:
       - name: 13. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
-          # CRÍTICO: La URL debe coincidir exactamente con la location de Nginx, que es /app-deploy/
+          # La URL sigue siendo la misma.
           curl -f -s -S http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
