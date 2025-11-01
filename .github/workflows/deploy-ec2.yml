@@ -69,7 +69,6 @@ jobs:
         run: |
           echo "El valor real del Host es: ${{ secrets.EC2_HOST }}"
 
-      # --- ESTE PASO ES AHORA EL 10 ---
       - name: 10. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
