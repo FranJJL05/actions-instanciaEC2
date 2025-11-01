@@ -34,7 +34,7 @@ jobs:
         run: node --experimental-modules node_modules/mocha/bin/mocha test/pruebas.test.js
       
       - name: 6. Generar la documentacion (JSDoc)
-        run: npx jsdoc src/js/index.js -d docs 
+        run: npx jsdoc js/index.js -d docs 
 
       # --- PASO CRÍTICO: PREPARACIÓN PARA DESPLIEGUE (BUILD STEP) ---
       # ESTE PASO MUEVE index.html y sus carpetas (css/ y js/) a la raíz del repositorio
