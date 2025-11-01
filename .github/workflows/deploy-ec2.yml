@@ -51,6 +51,9 @@ jobs:
             sudo mkdir -p /var/www/html/app-deploy 
             # 2. Darle propiedad del directorio al usuario para que SCP pueda escribir
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
+            # 3. CRÍTICO: Asegurar permisos de LECTURA (755) para el grupo www-data (Nginx)
+            sudo chmod -R 755 /var/www/html/app-deploy
+            # CRÍTICO: El chmod 755 garantiza que el usuario que ejecuta Nginx (www-data) pueda leer los archivos.
 
       - name: 8. Subir Archivos a EC2 (SCP)
         uses: appleboy/scp-action@master
@@ -88,11 +91,12 @@ jobs:
                 listen 80;
                 server_name _; 
                 location /app-deploy/ {
-                    # ATENCIÓN: Alias debe ser la ruta completa del directorio de la app
-                    alias /var/www/html/app-deploy/; 
+                    # ATENCIÓN: Alias debe ser la ruta COMPLETA de la carpeta
+                    # Se omite la barra final en el ALIAS para evitar un doble slash interno
+                    alias /var/www/html/app-deploy; 
                     index index.html;
-                    # Escapamos el signo de dólar para que el shell no lo interprete
-                    try_files \$uri \$uri/ =404;
+                    # CRÍTICO: try_files con la ruta del URI. Nótese que /app-deploy/index.html actúa como fallback.
+                    try_files \$uri \$uri/ /app-deploy/index.html =404;
                 }
             }"
             # Escribir la configuración en el archivo remoto, asegurando permisos con 'tee'
