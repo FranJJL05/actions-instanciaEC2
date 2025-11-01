@@ -39,39 +39,25 @@ jobs:
       # --- DESPLIEGUE CONTINUO (CD) ---
       
       # 7. Crear Directorio Remoto con Sudo (via SSH)
-      - name: 7. Cargar Clave SSH en Agente
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          # Asegúrate de que el nombre del secreto sea correcto (KEY en este ejemplo)
-          ssh-private-key: ${{ secrets.KEY }} 
-
-      # 8. Crear Directorio Remoto y Ajustar Permisos (via SSH)
-      - name: 8. Crear Directorio Remoto y Ajustar Permisos
-        uses: appleboy/ssh-action@master
-        with:
-          host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
-          username: ${{ secrets.USERNAME }}
-          # ¡IMPORTANTE! NO se incluye el parámetro 'key' aquí.
-          # La clave la proporciona el agente SSH cargado en el Paso 7.
-          script: |
-            # 1. Crear el directorio si no existe (-p)
-            sudo mkdir -p /var/www/html/app-deploy
-            # 2. Darle propiedad del directorio al usuario que ejecuta el deploy (para que SCP pueda escribir)
-            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy 
-
-      # 9. Subir archivos a EC2 (SCP)
-      - name: 9. Subir archivos a EC2 (SCP)
+      - name: 7. Despliegue (Crear Directorio y Subir Archivos)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 'ec2-98-89-41-135.compute-1.amazonaws.com' 
+          host: ${{ secrets.EC2_HOST }} 
           username: ${{ secrets.USERNAME }}
-          # ¡IMPORTANTE! NO se incluye el parámetro 'key' aquí.
-          # La clave la proporciona el agente SSH cargado en el Paso 7.
+          key: ${{ secrets.KEY }} 
+          
+          pre_script: | 
+            # 1. Crear el directorio si no existe (-p)
+            sudo mkdir -p /var/www/html/app-deploy 
+            # 2. Darle propiedad del directorio al usuario para que SCP pueda escribir
+            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy 
+            
           source: "." 
           target: "/var/www/html/app-deploy"
-          overwrite: true # Asegura que los archivos se reemplacen
+          overwrite: true 
+          command_timeout: 10m
 
-      # 10. Comprobación final
-      - name: 10. Verificar que la aplicación está visible
+      - name: 8. Verificar que la aplicación está visible
+        # Se usa el host y la ruta final para comprobar que el servidor Nginx responde con 200 OK
         run: |
-          curl -sI http://ec2-98-89-41-135.compute-1.amazonaws.com/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
+          curl -sI http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
