@@ -40,23 +40,21 @@ jobs:
       
       # 7. Crear Directorio Remoto con Sudo (via SSH)
       - name: 7. Crear Directorio Remoto y Ajustar Permisos (SSH)
-        # Usamos una acción SSH simple para ejecutar los comandos remotos.
+        # Usamos @master para asegurarnos de que esta acción siempre se resuelva.
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
-          # 🔑 SOLUCIÓN DE AUTENTICACIÓN: Pasamos la clave directamente
           key: ${{ secrets.KEY }} 
-          # Comando para crear el directorio y dar permisos
           script: |
             # 1. Crear el directorio si no existe (-p)
             sudo mkdir -p /var/www/html/app-deploy 
-            # 2. Darle propiedad del directorio al usuario que ejecuta el deploy para que SCP pueda escribir
+            # 2. Darle propiedad del directorio al usuario para que SCP pueda escribir
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
 
       - name: 8. Subir Archivos a EC2 (SCP)
-        # Usamos la acción SCP para la transferencia de archivos.
-        uses: appleboy/scp-action@v0.1.13 # Versión actualizada para mayor estabilidad
+        # Usamos @master para evitar problemas de versiones específicas.
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
@@ -68,7 +66,6 @@ jobs:
           command_timeout: 10m
 
       - name: 9. Verificar que la aplicación está visible
-        # Se usa el host y la ruta final para comprobar que el servidor Nginx responde con 200 OK
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
           curl -sI http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
