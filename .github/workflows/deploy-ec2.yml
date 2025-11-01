@@ -65,7 +65,12 @@ jobs:
           overwrite: true 
           command_timeout: 10m
 
-      - name: 9. Verificar que la aplicación está visible
+      - name: 9. DEBUG: Mostrar valor del Host (Temporal)
+        run: |
+          echo "El valor real del Host es: ${{ secrets.EC2_HOST }}"
+
+      # --- ESTE PASO ES AHORA EL 10 ---
+      - name: 10. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
           curl -sI http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
