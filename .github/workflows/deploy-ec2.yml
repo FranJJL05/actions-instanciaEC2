@@ -67,6 +67,17 @@ jobs:
           overwrite: true 
           command_timeout: 10m
 
+      - name: 8.5. DEBUG: Verificar Existencia de index.html Remoto
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          # El comando 'ls' fallará si index.html no existe
+          script: |
+            echo "Verificando que index.html se copió correctamente..."
+            ls -al /var/www/html/app-deploy/src/index.html
+
       - name: 9. Instalar y Preparar Nginx en EC2 (SSH)
         uses: appleboy/ssh-action@master
         with:
@@ -90,13 +101,13 @@ jobs:
             NGINX_CONF="server {
                 listen 80;
                 server_name _; 
+                # CRÍTICO: La app está en /var/www/html/app-deploy/src/, así que la ruta base es esa.
                 location /app-deploy/ {
                     # ATENCIÓN: Alias debe ser la ruta COMPLETA de la carpeta
-                    # Se omite la barra final en el ALIAS para evitar un doble slash interno
-                    alias /var/www/html/app-deploy; 
+                    alias /var/www/html/app-deploy/src/; 
                     index index.html;
-                    # CRÍTICO: try_files con la ruta del URI. Nótese que /app-deploy/index.html actúa como fallback.
-                    try_files \$uri \$uri/ /app-deploy/index.html =404;
+                    # try_files más simple que debería funcionar con la directiva 'alias' ajustada.
+                    try_files \$uri \$uri/ =404;
                 }
             }"
             # Escribir la configuración en el archivo remoto, asegurando permisos con 'tee'
