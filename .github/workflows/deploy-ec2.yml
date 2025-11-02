@@ -63,12 +63,11 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          # Copia los archivos necesarios: HTML, CSS, JS y documentación
-          source: "./index.html,./styles.css,./js,./docs"
+          # Copia el contenido de la raíz, donde ahora están los archivos planos (index.html).
+          source: "./*" 
           target: "/var/www/html/app-deploy"
           overwrite: true 
           command_timeout: 10m
-          rm: true
 
       - name: 9. Configurar Nginx para /app-deploy/ (SSH)
         uses: appleboy/ssh-action@master
