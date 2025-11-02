@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Despliegue CI/CD - Lista de Tareas</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="js/index.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="js/index.js"></script>
 </head>
 
 <body>
@@ -24,7 +24,10 @@
         </ul>
     </div>
 
-    <script>
+    <script type="module">
+        // Importar GestorTareas desde el módulo
+        import { GestorTareas } from './js/index.js';
+
         // Lógica de conexión con el HTML (esto NO se prueba con Jest, solo la clase GestorTareas)
         const gestor = new GestorTareas();
 
@@ -54,6 +57,9 @@
                 alert(error.message);
             }
         }
+
+        // Hacer la función accesible globalmente para onclick
+        window.agregarTareaGUI = agregarTareaGUI;
 
         // Cargar algunas tareas iniciales
         gestor.agregarTarea("Configurar GitHub Secrets");

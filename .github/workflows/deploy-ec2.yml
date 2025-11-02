@@ -63,11 +63,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          # Copia el contenido de la raíz, donde ahora están los archivos planos (index.html).
-          source: "./*" 
+          # Copia los archivos necesarios: HTML, CSS, JS y documentación
+          source: "./index.html,./styles.css,./js,./docs"
           target: "/var/www/html/app-deploy"
           overwrite: true 
           command_timeout: 10m
+          rm: true
 
       - name: 9. Configurar Nginx para /app-deploy/ (SSH)
         uses: appleboy/ssh-action@master
@@ -109,8 +110,16 @@ jobs:
       - name: 11. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
-          # Si Nginx devuelve 200 OK, la prueba es exitosa.
-          curl -f -s -S http://${{ secrets.EC2_HOST }}/app-deploy/index.html | grep 'HTTP/1.1 200 OK'
+          # Verificar que la URL responde correctamente
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/app-deploy/index.html || echo "000")
+          echo "Código HTTP recibido: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Error: La aplicación no responde correctamente. Código HTTP: $HTTP_CODE"
+            echo "Verificando conectividad y respuesta completa:"
+            curl -v http://${{ secrets.EC2_HOST }}/app-deploy/index.html || true
+            exit 1
+          fi
+          echo "✅ La aplicación está accesible correctamente (HTTP 200)"
 
 
       
