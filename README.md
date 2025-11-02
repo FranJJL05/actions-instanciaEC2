@@ -124,7 +124,7 @@ npm run docs
 
 ---
 
-## Enlaces del Proyecto
+## 🔗 Enlaces del Proyecto
 
 | Recurso | Enlace |
 | :--- | :--- |
@@ -133,7 +133,7 @@ npm run docs
 
 ---
 
-## Notas Adicionales
+## 📝 Notas Adicionales
 
 - El workflow se ejecuta automáticamente al hacer `push` a la rama `feature/despliegue-ec2`
 - Todos los archivos se despliegan en `/var/www/html/app-deploy/` en la instancia EC2
