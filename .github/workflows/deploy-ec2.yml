@@ -1,5 +1,5 @@
 # .github/workflows/deploy-ec2.yml
-name: Despliegue CI/CD a EC2 con Nginx (raíz)
+name: Despliegue CI/CD a EC2 con Nginx
 
 on:
   push:
