@@ -1,3 +1,4 @@
+# .github/workflows/deploy-ec2.yml
 name: Despliegue CI/CD a EC2 con Nginx
 
 on:
@@ -7,43 +8,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  despliegue:
+  pruebas-y-despliegue:
     runs-on: ubuntu-latest
     steps:
-
-      # --- 1. Preparar proyecto ---
-      - name: Checkout del proyecto
+      # --- CHECKOUT Y NODE ---
+      - name: 1. Checkout del proyecto
         uses: actions/checkout@v5.0.0
 
-      - name: Configurar Node.js
+      - name: 2. Configurar Node.js
         uses: actions/setup-node@v6.0.0
         with:
           node-version: '20.x'
 
-      - name: Instalar dependencias
+      - name: 3. Instalar dependencias
         run: npm install
 
-      - name: Forzar permisos de ejecución
+      # --- INTEGRACIÓN CONTINUA (CI) ---
+      - name: 4. Forzar permisos de ejecución (Mocha/JSDoc)
         run: |
           chmod +x ./node_modules/.bin/mocha
           chmod +x ./node_modules/.bin/jsdoc
 
-      - name: Ejecutar pruebas
+      - name: 5. Ejecutar pruebas con Mocha
         run: node --experimental-modules node_modules/mocha/bin/mocha test/pruebas.test.js
 
-      - name: Generar documentación
+      - name: 6. Generar documentación con JSDoc
         run: npx jsdoc js/index.js -d docs
 
-      - name: Asegurar carpeta docs
-        run: |
-          mkdir -p docs
-          touch docs/.keep  # evita que SCP falle si está vacía
-
-      - name: Listar archivos antes de subir
-        run: ls -R
-
-      # --- 2. Preparar EC2 e instalar Nginx ---
-      - name: Instalar Nginx y preparar directorio
+      # --- DESPLIEGUE CONTINUO (CD) ---
+      - name: 7. Preparar EC2 e instalar Nginx
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -56,24 +49,18 @@ jobs:
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html
             sudo chmod -R 755 /var/www/html
 
-      # --- 3. Subir aplicación y docs ---
-      - name: Subir archivos a EC2
+      - name: 8. Subir archivos a EC2 (SCP)
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          source: |
-            ./index.html
-            ./styles.css
-            ./js/*
-            ./docs/*
+          source: "./*"  # Contenido raíz del repo
           target: "/var/www/html"
           overwrite: true
           command_timeout: 10m
 
-      # --- 4. Configurar Nginx ---
-      - name: Configurar Nginx y reiniciar
+      - name: 9. Configurar Nginx para app y docs
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -83,22 +70,54 @@ jobs:
             NGINX_CONF="server {
                 listen 80;
                 server_name _;
+                
+                # App principal en /
                 root /var/www/html;
                 index index.html;
+                try_files \$uri \$uri/ =404;
+
+                # Documentación JSDoc en /docs/
+                location /docs/ {
+                    alias /var/www/html/docs/;
+                    index index.html;
+                    try_files \$uri \$uri/ =404;
+                }
             }"
-            echo "$NGINX_CONF" | sudo tee /etc/nginx/sites-available/default
+            echo "$NGINX_CONF" | sudo tee /etc/nginx/sites-available/app-deploy
+
+      - name: 10. Habilitar y reiniciar Nginx
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            sudo rm -f /etc/nginx/sites-enabled/default
+            sudo ln -s /etc/nginx/sites-available/app-deploy /etc/nginx/sites-enabled/app-deploy
             sudo nginx -t
             sudo systemctl restart nginx
-            echo "✅ Nginx configurado y reiniciado"
 
-      # --- 5. Verificación final ---
-      - name: Verificar despliegue
+      # --- VERIFICACIÓN FINAL ---
+      - name: 11. Verificar que la aplicación y docs están accesibles
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/index.html || echo "000")
-          echo "Código HTTP recibido: $HTTP_CODE"
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ La aplicación no responde correctamente."
+          echo "Verificando host: ${{ secrets.EC2_HOST }}"
+
+          APP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/index.html || echo "000")
+          DOCS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/docs/index.html || echo "000")
+
+          echo "Código HTTP app: $APP_CODE"
+          echo "Código HTTP docs: $DOCS_CODE"
+
+          if [ "$APP_CODE" != "200" ]; then
+            echo "Error: La aplicación no responde correctamente (HTTP $APP_CODE)"
             curl -v http://${{ secrets.EC2_HOST }}/index.html || true
             exit 1
           fi
-          echo "✅ La aplicación está accesible correctamente (HTTP 200)"
+
+          if [ "$DOCS_CODE" != "200" ]; then
+            echo "Error: La documentación no responde correctamente (HTTP $DOCS_CODE)"
+            curl -v http://${{ secrets.EC2_HOST }}/docs/index.html || true
+            exit 1
+          fi
+
+          echo "✅ App y documentación accesibles correctamente (HTTP 200)"
