@@ -56,8 +56,11 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           source: |
-            ./src/*
+            ./index.html
+            ./styles.css
+            ./js/*
             ./docs/*
+
           target: "/var/www/html"
           overwrite: true
           command_timeout: 10m
