@@ -1,3 +1,4 @@
+# .github/workflows/deploy-ec2.yml
 name: Despliegue CI/CD a EC2 con Nginx
 
 on:
@@ -7,59 +8,61 @@ on:
   workflow_dispatch:
 
 jobs:
-  pruebas-y-despliegue:
-    runs-on: ubuntu-latest
+  pruebas-y-despliegue: 
+    runs-on: ubuntu-latest 
     steps:
       - name: 1. Checkout del proyecto
         uses: actions/checkout@v5.0.0
-
+      
       - name: 2. Configurar Node.js
         uses: actions/setup-node@v6.0.0
         with:
           node-version: '20.x'
 
-      - name: 3. Instalar dependencias
-        run: npm install
+      - name: 3. Instalar dependencias (Mocha y JSDoc)
+        run: npm install 
 
       # --- INTEGRACIÓN CONTINUA (CI) ---
-      - name: 4. Forzar permisos de ejecución
+      
+      - name: 4. Forzar Permisos de Ejecución
         run: |
           chmod +x ./node_modules/.bin/mocha
           chmod +x ./node_modules/.bin/jsdoc
 
-      - name: 5. Ejecutar pruebas con Mocha
+      - name: 5. Ejecutar las pruebas con Mocha
         run: node --experimental-modules node_modules/mocha/bin/mocha test/pruebas.test.js
-
-      - name: 6. Generar documentación (JSDoc)
-        run: npx jsdoc js/index.js -d docs
+      
+      - name: 6. Generar la documentación (JSDoc)
+        run: npx jsdoc js/index.js -d docs 
 
       # --- DESPLIEGUE CONTINUO (CD) ---
-      - name: 7. Instalar Nginx y preparar directorio (SSH)
+      
+      - name: 7. Instalar Nginx, Crear Directorio Remoto y Ajustar Permisos (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
+          key: ${{ secrets.KEY }} 
           script: |
             sudo apt update
             sudo apt install nginx -y
             sudo mkdir -p /etc/nginx/sites-available
-            sudo mkdir -p /var/www/html/app
-            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app
-            sudo chmod -R 755 /var/www/html/app
+            sudo mkdir -p /var/www/html/app-deploy 
+            sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
+            sudo chmod -R 755 /var/www/html/app-deploy
 
-      - name: 8. Subir archivos a EC2 (SCP)
+      - name: 8. Subir Archivos a EC2 (SCP)
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          source: "./*"
-          target: "/var/www/html/app"
-          overwrite: true
+          source: "./*" 
+          target: "/var/www/html/app-deploy"
+          overwrite: true 
           command_timeout: 10m
 
-      - name: 9. Configurar Nginx para la raíz (SSH)
+      - name: 9. Configurar Nginx para /app-deploy/ (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -68,17 +71,16 @@ jobs:
           script: |
             NGINX_CONF="server {
                 listen 80;
-                server_name _;
-
-                location / {
-                    root /var/www/html/app;
+                server_name _; 
+                location /app-deploy/ {
+                    alias /var/www/html/app-deploy/; 
                     index index.html;
                     try_files \$uri \$uri/ =404;
                 }
             }"
-            echo "$NGINX_CONF" | sudo tee /etc/nginx/sites-available/app
+            echo "$NGINX_CONF" | sudo tee /etc/nginx/sites-available/app-deploy
 
-      - name: 10. Habilitar y reiniciar Nginx (SSH)
+      - name: 10. Habilitar y Reiniciar Nginx (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -86,7 +88,7 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             sudo rm -f /etc/nginx/sites-enabled/default
-            sudo ln -s /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
+            sudo ln -s /etc/nginx/sites-available/app-deploy /etc/nginx/sites-enabled/app-deploy
             sudo nginx -t
             sudo systemctl restart nginx
 
@@ -94,11 +96,11 @@ jobs:
       - name: 11. Verificar que la aplicación está visible
         run: |
           echo "Verificando host: ${{ secrets.EC2_HOST }}"
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/index.html || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/app-deploy/index.html || echo "000")
           echo "Código HTTP recibido: $HTTP_CODE"
           if [ "$HTTP_CODE" != "200" ]; then
             echo "Error: La aplicación no responde correctamente. Código HTTP: $HTTP_CODE"
-            curl -v http://${{ secrets.EC2_HOST }}/index.html || true
+            curl -v http://${{ secrets.EC2_HOST }}/app-deploy/index.html || true
             exit 1
           fi
           echo "✅ La aplicación está accesible correctamente (HTTP 200)"
