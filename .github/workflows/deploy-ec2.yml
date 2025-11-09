@@ -8,117 +8,102 @@ on:
   workflow_dispatch:
 
 jobs:
-  pruebas-y-despliegue: 
-    runs-on: ubuntu-latest 
+  despliegue:
+    runs-on: ubuntu-latest
     steps:
       - name: 1. Checkout del proyecto
         uses: actions/checkout@v5.0.0
-      
+
       - name: 2. Configurar Node.js
         uses: actions/setup-node@v6.0.0
         with:
           node-version: '20.x'
 
-      - name: 3. Instalar dependencias (Mocha y JSDoc)
-        run: npm install 
+      - name: 3. Instalar dependencias
+        run: npm install
 
-      # --- INTEGRACIÓN CONTINUA (CI) ---
-      
-      # 4. Forzar Permisos de Ejecución (Mocha/JSDoc)
-      - name: 4. Forzar Permisos de Ejecución
+      - name: 4. Forzar permisos de ejecución
         run: |
           chmod +x ./node_modules/.bin/mocha
           chmod +x ./node_modules/.bin/jsdoc
 
-      - name: 5. Ejecutar las pruebas con Mocha
+      - name: 5. Ejecutar pruebas
         run: node --experimental-modules node_modules/mocha/bin/mocha test/pruebas.test.js
-      
-      - name: 6. Generar la documentacion (JSDoc)
-        run: npx jsdoc js/index.js -d docs 
+
+      - name: 6. Generar documentación
+        run: npx jsdoc js/index.js -d docs
 
       # --- DESPLIEGUE CONTINUO (CD) ---
-      
-      - name: 7. Instalar Nginx, Crear Directorio Remoto y Ajustar Permisos (SSH)
+
+      - name: 7. Preparar EC2 e instalar Nginx
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }} 
+          key: ${{ secrets.KEY }}
           script: |
-            # Instalación de Nginx
             sudo apt update
             sudo apt install nginx -y
-            sudo mkdir -p /etc/nginx/sites-available
-            
-            # Crear el directorio de la aplicación si no existe
-            sudo mkdir -p /var/www/html/app-deploy 
-            # Darle propiedad del directorio al usuario para que SCP pueda escribir
+            sudo mkdir -p /var/www/html/app-deploy
             sudo chown -R ${{ secrets.USERNAME }}:www-data /var/www/html/app-deploy
-            # CRÍTICO: Asegurar permisos de LECTURA (755) para el grupo www-data (Nginx)
             sudo chmod -R 755 /var/www/html/app-deploy
 
-      - name: 8. Subir Archivos a EC2 (SCP)
+      - name: 8. Subir archivos a EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          # Copia el contenido de la raíz, donde ahora están los archivos planos (index.html).
-          source: "./*" 
+          source: "./*"
           target: "/var/www/html/app-deploy"
-          overwrite: true 
+          overwrite: true
           command_timeout: 10m
 
-      - name: 9. Configurar Nginx para /app-deploy/ (SSH)
+      - name: 9. Verificar archivos y configuración (SSH)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            # Definición de la configuración de Nginx.
+            echo "Archivos en /var/www/html/app-deploy/:"
+            ls -l /var/www/html/app-deploy/
+            echo "Contenido de /etc/nginx/sites-available/app-deploy:"
+            if [ -f /etc/nginx/sites-available/app-deploy ]; then
+              cat /etc/nginx/sites-available/app-deploy
+            else
+              echo "Archivo de configuración no existe"
+            fi
+
+      - name: 10. Configurar Nginx y reiniciar
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
             NGINX_CONF="server {
                 listen 80;
-                server_name _; 
-                location /app-deploy/ {
-                    # SOLUCIÓN: El alias apunta a la raíz del despliegue, ¡sin 'src/'!
-                    alias /var/www/html/app-deploy/; 
-                    index index.html;
-                    try_files \$uri \$uri/ =404;
-                }
+                server_name _;
+                root /var/www/html/app-deploy;
+                index index.html;
             }"
-            # Escribir la configuración en el archivo remoto, asegurando permisos con 'tee'
             echo "$NGINX_CONF" | sudo tee /etc/nginx/sites-available/app-deploy
-
-      - name: 10. Habilitar y Reiniciar Nginx (SSH)
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          script: |
-            # 1. Quitar el enlace simbólico 'default' que podría estar activo.
             sudo rm -f /etc/nginx/sites-enabled/default
-            # 2. Crear un nuevo enlace simbólico para nuestra app en sites-enabled.
-            sudo ln -s /etc/nginx/sites-available/app-deploy /etc/nginx/sites-enabled/app-deploy
-            # 3. Verificar configuración y reiniciar el servicio
+            sudo ln -sf /etc/nginx/sites-available/app-deploy /etc/nginx/sites-enabled/app-deploy
             sudo nginx -t
             sudo systemctl restart nginx
+            echo "✅ Nginx reiniciado correctamente"
 
-      # --- VERIFICACIÓN FINAL ---
-      - name: 11. Verificar que la aplicación está visible
+      - name: 11. Verificar que la app está visible
         run: |
-          echo "Verificando host: ${{ secrets.EC2_HOST }}"
-          # Verificar que la URL responde correctamente
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/app-deploy/index.html || echo "000")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/index.html || echo "000")
           echo "Código HTTP recibido: $HTTP_CODE"
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "Error: La aplicación no responde correctamente. Código HTTP: $HTTP_CODE"
-            echo "Verificando conectividad y respuesta completa:"
-            curl -v http://${{ secrets.EC2_HOST }}/app-deploy/index.html || true
+            echo "❌ La aplicación no responde correctamente."
+            curl -v http://${{ secrets.EC2_HOST }}/index.html || true
             exit 1
           fi
           echo "✅ La aplicación está accesible correctamente (HTTP 200)"
-
 
       
