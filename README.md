@@ -20,5 +20,5 @@ El *workflow* de **GitHub Actions** (`deploy-ec2.yml`) se dispara con cada `push
 | Recurso | Enlace |
 | :--- | :--- |
 | **Repositorio GitHub** | [ENLACE DE TU REPOSITORIO] |
-| **Aplicación Desplegada (EC2)** | [http://ec2-52-91-102-189.compute-1.amazonaws.com/index.html](http://ec2-52-91-102-189.compute-1.amazonaws.com/index.html) |
-| **Documentación Técnica** | [http://ec2-52-91-102-189.compute-1.amazonaws.com/docs/index.html](http://ec2-52-91-102-189.compute-1.amazonaws.com/docs/index.html) |
+| **Aplicación Desplegada (EC2)** | [http://ec2-18-212-213-19.compute-1.amazonaws.com/index.html](http://ec2-52-91-102-189.compute-1.amazonaws.com/index.html) |
+| **Documentación Técnica** | [http://ec2-18-212-213-19.compute-1.amazonaws.com/docs/index.html](http://ec2-52-91-102-189.compute-1.amazonaws.com/docs/index.html) |
