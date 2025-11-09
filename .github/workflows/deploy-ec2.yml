@@ -11,6 +11,7 @@ jobs:
   despliegue:
     runs-on: ubuntu-latest
     steps:
+
       # --- 1. Preparar proyecto ---
       - name: Checkout del proyecto
         uses: actions/checkout@v5.0.0
@@ -34,6 +35,9 @@ jobs:
       - name: Generar documentación
         run: npx jsdoc js/index.js -d docs
 
+      - name: Asegurar carpeta docs
+        run: mkdir -p docs
+
       # --- 2. Preparar EC2 e instalar Nginx ---
       - name: Instalar Nginx y preparar directorio
         uses: appleboy/ssh-action@master
@@ -49,7 +53,7 @@ jobs:
             sudo chmod -R 755 /var/www/html
 
       # --- 3. Subir aplicación y docs ---
-      - name: Subir aplicación y documentación a EC2
+      - name: Subir archivos a EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -60,7 +64,6 @@ jobs:
             ./styles.css
             ./js/*
             ./docs/*
-
           target: "/var/www/html"
           overwrite: true
           command_timeout: 10m
@@ -84,7 +87,7 @@ jobs:
             sudo systemctl restart nginx
             echo "✅ Nginx configurado y reiniciado"
 
-      # --- 5. Test final ---
+      # --- 5. Verificación final ---
       - name: Verificar despliegue
         run: |
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}/index.html || echo "000")
@@ -95,5 +98,3 @@ jobs:
             exit 1
           fi
           echo "✅ La aplicación está accesible correctamente (HTTP 200)"
-
-      
